@@ -51,7 +51,7 @@ def get_response(user_input):
 st.title("포트폴리오 챗봇")
 
 # 이미지 표시
-st.image("hand.png", caption="Welcome to the Restaurant Chatbot", use_column_width=True)
+st.image("health.png", caption="Welcome to the Restaurant Chatbot", use_column_width=True)
 
 st.write("프로젝트에 관한 질문을 입력해보세요. 예: 주제가 무엇인가요?")
 
