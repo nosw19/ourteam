@@ -2,13 +2,12 @@ import streamlit as st
 from ultralytics import YOLO
 import tempfile
 import cv2
-import time
 import os
 
-# 페이지 레이아웃 설정
+# 전체 레이아웃을 넓게 설정
 st.set_page_config(layout="wide")
 
-# 제목
+# 제목 설정
 st.title("비디오 사물 검출 앱")
 
 # 모델 파일 업로드
@@ -23,7 +22,7 @@ if model_file:
 # 비디오 파일 업로드
 uploaded_file = st.file_uploader("비디오 파일을 업로드하세요", type=["mp4", "mov", "avi"])
 
-# 레이아웃 설정
+# 전체 레이아웃을 컨테이너로 감싸기
 with st.container():
     col1, col2 = st.columns(2)
 
@@ -49,9 +48,32 @@ with st.container():
                 unsafe_allow_html=True,
             )
 
+# 버튼 스타일 설정
+st.markdown(
+    """
+    <style>
+    .stButton > button {
+        background-color: #4d4d4d;
+        color: #ffffff;
+        font-weight: bold;
+        padding: 12px 24px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .stButton > button:hover {
+        background-color: #333333;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # 사물 검출 버튼 클릭 이벤트 처리
 if st.button("사물 검출 실행") and uploaded_file and model_file:
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".avi") as temp_output:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_output:
         output_path = temp_output.name
 
     with tempfile.NamedTemporaryFile(delete=False) as temp_input:
@@ -65,12 +87,13 @@ if st.button("사물 검출 실행") and uploaded_file and model_file:
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
+    frame_count = 0
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        # YOLO 모델로 예측 수행
+        # YOLO 모델로 예측 수행 및 디버깅
         results = model(frame)
         detections = results[0].boxes if len(results) > 0 else []
 
@@ -84,21 +107,24 @@ if st.button("사물 검출 실행") and uploaded_file and model_file:
 
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            st.write(f"Frame {frame_count}: {len(detections)} detections")
+        else:
+            # 검출 결과가 없을 때도 원본 프레임을 저장
+            st.write(f"Frame {frame_count}: No detections - Original frame saved")
 
+        # 원본 또는 검출된 프레임을 그대로 저장
         out.write(frame)
+        frame_count += 1
 
     cap.release()
     out.release()
 
-    # 저장 후 대기 시간
-    time.sleep(1)
-
-    # 결과 비디오를 세션 상태에 저장
+    # 결과 비디오를 st.session_state에 저장하여 스트림릿에 표시
     st.session_state["processed_video"] = output_path
     result_placeholder.video(output_path)
     st.success("사물 검출이 완료되어 오른쪽에 표시됩니다.")
 
-    # 다운로드 링크 제공
+ # 다운로드 링크 제공
     with open(output_path, "rb") as file:
         st.download_button(
             label="결과 영상 다운로드",
